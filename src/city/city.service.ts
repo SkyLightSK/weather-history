@@ -51,26 +51,13 @@ export class CityService {
     }
 
     async avgTemp(id: string | number) : Promise<CityAvgDto> {
-        const city = await this.cityRepository.findOneOrFail(id, { relations: ['weather'] })
-        const arr = [
-                city.weather.map( weather => weather.day.avgtemp_c ),
-                city.weather.map( weather => weather.day.avgtemp_f )
-        ]
-        const avg = (array) => array.reduce((a, b) => a + b) / array.length;
-
-        const cityAvg: CityAvgDto = {
-            id: city.id,
-            name: city.name,
-            region: city.region,
-            country: city.country,
-            lat: city.lat,
-            lon: city.lon,
-            tz_id: city.tz_id,
-            avgtemp_c: Math.round(avg(arr[0]) * 10) / 10,
-            avgtemp_f: Math.round(avg(arr[1]) * 10) / 10,
-        };
-
-        return cityAvg;
+        return await this.cityRepository
+            .createQueryBuilder("city")
+            .select("round(AVG(weather.avgtemp_c), 2)", "city_avgtemp_celsius")
+            .addSelect("round(AVG(weather.avgtemp_f), 2)", "city_avgtemp_fahrenheit")
+            .leftJoin("city.weather", "weather")
+            .where("city.id = :city", { city: id })
+            .getRawOne()
     }
 
     async popular() : Promise<City[]> {
